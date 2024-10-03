@@ -1,0 +1,35 @@
+workflows:
+  ios-workflow:
+    name: iOS Workflow
+    environment:
+      xcode: latest
+      cocoapods: default
+      flutter: stable
+      app_store_connect_credential:
+        key_id: KHTBPZV77N
+        issuer_id: ca8b9dff-5909-4411-9d6b-bc9765e7a9e2
+        private_key: Encrypted(...)
+    scripts:
+      - name: Install dependencies
+        script: |
+          flutter packages get
+          pod install
+      - name: Set up keychain
+        script: |
+          security create-keychain -p "" build.keychain
+          security import Certificates.p12 -k build.keychain -P 3MUr7yVK -T /usr/bin/codesign
+          security set-keychain-settings -t 3600 -u build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "" build.keychain
+          security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain
+      - name: Build iOS
+        script: flutter build ipa --release --no-tree-shake-icons
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        api_key: $APP_STORE_CONNECT_API_KEY
+        apple_id: ca8b9dff-5909-4411-9d6b-bc9765e7a9e2
+        ipa: build/ios/ipa/wealth.ipa
+        bundle_id: com.app.wealth
+        submit_to_testflight: true
